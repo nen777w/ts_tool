@@ -15,6 +15,7 @@
 #include <QFileInfo>
 #include <QDir>
 
+#define TS_TOOL_VERSION_S "v2.1"
 
 void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinished, bool with_vanished);
 void toTS(const QString &inputDir, const QString &outputFile);
@@ -44,7 +45,7 @@ static const argument_info args[] = {
 
 void show_help(int exit_code)
 {
-    std::cout << "ts_tool v2.0 CODIJY 2015" << std::endl;
+    std::cout << "ts_tool " TS_TOOL_VERSION_S " CODIJY 2015" << std::endl;
     std::cout << "Arguments:" << std::endl;
 
     std::for_each(args, args+sizeof(args)/sizeof(argument_info), [](const argument_info &nfo)
@@ -77,7 +78,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("td_tool");
-    QCoreApplication::setApplicationVersion("2.0");
+    QCoreApplication::setApplicationVersion(TS_TOOL_VERSION_S);
 
     QString src, dst, mode;
     bool with_unfinished = false, with_vanished = false;

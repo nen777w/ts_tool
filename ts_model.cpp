@@ -81,7 +81,7 @@ namespace visitors
             if(!m_with_unfinished || !m_with_vanished) 
             {
                 QString attr_type = translation->attributes().value("type").toString();
-                bSkipProcessing = ("unfinished" == attr_type && !m_with_unfinished) || ("vanished" == attr_type && !m_with_vanished);
+                bSkipProcessing = ("unfinished" == attr_type && !m_with_unfinished) || (("vanished" == attr_type || "obsolete" == attr_type) && !m_with_vanished);
             }
 
             if(!bSkipProcessing)
