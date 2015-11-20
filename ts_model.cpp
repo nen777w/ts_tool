@@ -1,4 +1,4 @@
-#include "ts_model.h"
+﻿#include "ts_model.h"
 
 //std
 #include <iostream>
@@ -99,7 +99,7 @@ namespace visitors
                 }
 
                 hash = efl_hash(text.toStdWString().c_str());
-                translation->set_text(QString("[%1]").arg(hash, 8, 16, QChar('0')).toUpper());
+                translation->set_text(QString("[[[%1]]]").arg(hash, 8, 16, QChar('0')).toUpper());
                 text = QString("%1 \"%2\"").arg(translation->text(), text);
 
                 text.replace("\n", "\\n");

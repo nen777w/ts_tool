@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include <assert.h>
 #include <algorithm>
 
@@ -15,7 +15,7 @@
 #include <QFileInfo>
 #include <QDir>
 
-#define TS_TOOL_VERSION_S "v2.1"
+#define VERSION "2.2"
 
 void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinished, bool with_vanished);
 void toTS(const QString &inputDir, const QString &outputFile);
@@ -45,7 +45,7 @@ static const argument_info args[] = {
 
 void show_help(int exit_code)
 {
-    std::cout << "ts_tool " TS_TOOL_VERSION_S " CODIJY 2015" << std::endl;
+    std::cout << "ts_tool v" VERSION " CODIJY 2015" << std::endl;
     std::cout << "Arguments:" << std::endl;
 
     std::for_each(args, args+sizeof(args)/sizeof(argument_info), [](const argument_info &nfo)
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("td_tool");
-    QCoreApplication::setApplicationVersion(TS_TOOL_VERSION_S);
+    QCoreApplication::setApplicationVersion(VERSION);
 
     QString src, dst, mode;
     bool with_unfinished = false, with_vanished = false;
@@ -282,6 +282,7 @@ void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinis
     QFile sFile(outputTextFile);
     sFile.open(QIODevice::WriteOnly|QIODevice::Text);
     QTextStream txts(&sFile);
+    txts.setCodec("UTF-8");
         
     std::for_each(strings.begin(), strings.end(), [&txts](const map_hashQString::value_type &vt){ txts << vt.second << "\n"; });
 
