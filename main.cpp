@@ -214,7 +214,7 @@ bool parse_txt_file(const QString &inputFile, visitors::map_QStringQString &stri
     iFile.open(QFile::ReadOnly|QFile::Text);
     QTextStream txts(&iFile);
     
-    const QString rgxp("^(?<id>\\[[A-F0-9]{8}\\])\\s*\\\"(?<text>.*)\\\"$");
+    const QString rgxp("^(?<id>\\[\\[\\[[A-F0-9]{8}\\]\\]\\])\\s*\\\"(?<text>.*)\\\"$");
     QRegularExpression rxp(rgxp);
 
     unsigned int line_counter = 0;
