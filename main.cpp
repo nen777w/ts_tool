@@ -1,6 +1,7 @@
 ﻿#include <iostream>
 #include <assert.h>
 #include <algorithm>
+#include <sstream>
 
 //model
 #include "ts_model.h"
@@ -15,14 +16,21 @@
 #include <QFileInfo>
 #include <QDir>
 
-#define VERSION "2.3"
+#define VERSION "2.5"
 
 void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinished, bool with_vanished);
-void toTS(const QString &inputDir, const QString &outputFile);
+void toTS(const QString &inputDir, const QString &outputFile, const QString &langid);
 
+//SHOULD BE IN SAME ORDER AS in args[]
 enum EArgID {
-        arg_unknown = -1
-    ,   arg_help = 0, arg_src, arg_dst, arg_mode, arg_with_unfinished, arg_with_vanished
+      arg_unknown = -1
+    , arg_help = 0
+    , arg_src
+    , arg_dst
+    , arg_mode
+    , arg_langid
+    , arg_with_unfinished
+    , arg_with_vanished
 };
 
 struct argument_info
@@ -33,12 +41,13 @@ struct argument_info
     bool flag;
 };
 
-//SAME ORDER AS in EArgID
+//SHOULD BE IN SAME ORDER AS in EArgID
 static const argument_info args[] = {
         {arg_help, "--help", "Show this help", true}
     ,   {arg_src, "--src", "Source file or directory", false}
     ,   {arg_dst, "--dst", "Destination file or directory", false}
     ,   {arg_mode, "--mode", "Mode: TXT i.e. .ts to .txt | TS i.e. .txt to .ts", false}
+    ,   {arg_langid, "--langid", "Language id. For example: en_US, de_DE, ja. According to QtLibguist specification. If not set leave default [Work only in TS mode]", false}
     ,   {arg_with_unfinished, "--with-unfinished", "Include unfinished translations. By default: ignore. [Work only in TXT mode]", true}
     ,   {arg_with_vanished, "--with-vanished", "Include obsolete translations. By default: ignore. [Work only in TXT mode]", true}
 };
@@ -80,7 +89,7 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName("td_tool");
     QCoreApplication::setApplicationVersion(VERSION);
 
-    QString src, dst, mode;
+    QString src, dst, mode, langid;
     bool with_unfinished = false, with_vanished = false;
 
     if(1 == argc) {
@@ -97,6 +106,7 @@ int main(int argc, char *argv[])
         case arg_src: value = &src; break;
         case arg_dst: value = &dst; break;
         case arg_mode: value = &mode; break;
+        case arg_langid: value = &langid; break;
         case arg_with_unfinished: with_unfinished = true; break;
         case arg_with_vanished: with_vanished = true; break;
         }
@@ -110,7 +120,7 @@ int main(int argc, char *argv[])
 
 
     if(src.isEmpty() || dst.isEmpty() || mode.isEmpty()) {
-        std::cerr << "You may use at least first 3 args" << std::endl;
+        std::cout << "You may use at least first 3 args" << std::endl;
         show_help(-1);
     }
 
@@ -120,11 +130,11 @@ int main(int argc, char *argv[])
     }
     else if("TS" == mode)
     {
-        toTS(src, dst);
+        toTS(src, dst, langid);
     }
     else
     {
-        std::cerr << "Invalid mode" << std::endl;
+        std::cout << "Invalid mode" << std::endl;
         show_help(-1);
     }
 
@@ -142,7 +152,7 @@ base_node::base_node_ptr parse_ts_file(const QString &inputFile)
     QString text;
 
     enum EStates {
-        st_Unstate = 0
+			st_Unstate = 0
         ,	st_WaitForStartElement = 0x01
         ,   st_WaitForText = 0x02
         ,   st_WaitForEndElement = 0x04
@@ -171,17 +181,17 @@ base_node::base_node_ptr parse_ts_file(const QString &inputFile)
                 QString name = xmlReader.name().toString();
                 QXmlStreamAttributes attrs = xmlReader.attributes();
 
-                element_node::EElementNodeType ent = element_node::ent_element;
-
                 if("message" == name) {
-                    ent = element_node::ent_message;
+					current = current->add_child(std::make_shared<element_node>(element_node::ent_message, name, attrs));
                 } else if("source" == name) {
-                    ent = element_node::ent_source;
+					current = current->add_child(std::make_shared<element_node>(element_node::ent_source, name, attrs));
                 } else if("translation" == name) {
-                    ent = element_node::ent_translation;
-                }
-
-                current = current->add_child(std::make_shared<element_node>(ent, name, attrs));
+					current = current->add_child(std::make_shared<element_node>(element_node::ent_translation, name, attrs));
+                } else if("TS" == name) {
+					current = current->add_child(std::make_shared<TS_node>(name, attrs));	
+				} else {
+					current = current->add_child(std::make_shared<element_node>(element_node::ent_element, name, attrs));
+				}
 
                 states = st_WaitForText|st_WaitForStartElement|st_WaitForEndElement;
             } break;
@@ -230,11 +240,12 @@ bool parse_txt_file(const QString &inputFile, visitors::map_QStringQString &stri
 
         if(id.isEmpty() || text.isEmpty())
         {
-            std::cerr << "Error in line: " << line_counter << " file: " << inputFile.toStdString().c_str() << std::endl;
+            std::cout << "Error in line: " << line_counter << " , file: " << inputFile.toUtf8().constData() << " , source line: " << str.toUtf8().constData() << std::endl;
             return false;
         }
 
         strings.insert(visitors::map_QStringQString::value_type(id, text));
+        line_counter++;
     }	
 
     return true;
@@ -246,7 +257,7 @@ void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinis
 
     QFileInfo fiI(inputFile);
     if(!fiI.exists()) {
-        std::cerr << "Input file not exist!" << std::endl;
+        std::cout << "Input file not exist!" << std::endl;
         show_help(-1);
     }
 
@@ -264,7 +275,7 @@ void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinis
         || 2 < files_in_out_dir
         || (2 == files_in_out_dir && !QFileInfo(outputXmlFileName).exists() && !QFileInfo(outputTextFile).exists()) )
     {
-        std::cerr << "Cant create output directory OR directory is not empty!" << std::endl;
+        std::cout << "Cant create output directory OR directory is not empty!" << std::endl;
         show_help(-1);
     }
     
@@ -295,13 +306,13 @@ void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinis
     root->visit(ddv);
 }
 
-void toTS(const QString &inputDir, const QString &outputFile)
+void toTS(const QString &inputDir, const QString &outputFile, const QString &langid)
 {
     using namespace visitors;
 
     QFileInfo fiI(inputDir);
     if(!fiI.exists()) {
-        std::cerr << "Input directory not exist!" << std::endl;
+        std::cout << "Input directory not exist!" << std::endl;
         show_help(-1);
     }
 
@@ -324,7 +335,7 @@ void toTS(const QString &inputDir, const QString &outputFile)
 
     if(2 < files_in_input_dir || 0 == files_in_input_dir || tsFile.isEmpty() || txtFile.isEmpty())
     {
-        std::cerr << "Input directory should contain only txt and ts file with same name!" << std::endl;
+        std::cout << "Input directory should contain only txt and ts file with same name!" << std::endl;
         show_help(-1);
     }
 
@@ -334,12 +345,12 @@ void toTS(const QString &inputDir, const QString &outputFile)
     //parse txt file
     map_QStringQString strings;
     if(!parse_txt_file(txtFile, strings)) {
-        std::cerr << "Parsing error: " << tsFile.toStdString() << " !" << std::endl;
+        std::cout << "Parsing error: " << txtFile.toUtf8().constData() << " !" << std::endl;
         show_help(-1);
     }
 
     //replace strings
-    back_string_replacer bsr(strings);
+    back_string_replacer bsr(strings, langid);
     root->visit(bsr);
 
     //dump to file

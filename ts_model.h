@@ -6,6 +6,7 @@
 #include <QXmlStreamAttributes>
 
 //std
+#include <iostream>
 #include <vector>
 #include <map>
 #include <memory>
@@ -25,6 +26,7 @@ QT_END_NAMESPACE
 struct document_node;
 struct DTD_node;
 struct element_node;
+struct TS_node;
 
 namespace visitors
 {
@@ -35,7 +37,8 @@ namespace visitors
         void visit(const document_node *node) const;
         void visit(const DTD_node *node) const;
         void visit(const element_node *node) const;
-
+		void visit(const TS_node *node) const;
+		
     private:
         QXmlStreamWriter &m_writer;
     };
@@ -75,13 +78,18 @@ namespace visitors
 
     struct back_string_replacer
     {
-        back_string_replacer(const map_QStringQString &strings) 
-            : m_strings(strings), source(nullptr), translation(nullptr), m_state(st_WaitForMessage) 
+        back_string_replacer(const map_QStringQString &strings, const QString &langid) 
+            : m_strings(strings)
+			, m_langid(langid)
+			, source(nullptr)
+			, translation(nullptr)
+			, m_state(st_WaitForMessage) 
         {}
 
         void visit(const document_node *node);
         void visit(const DTD_node *node);
         void visit(element_node *node);
+		void visit(TS_node *node);
     
     private:
         enum EStates { st_WaitForMessage = 0x00, st_WaitForSource = 0x01, st_WaitForTranslation = 0x02, st_Complete = 0x04 };
@@ -92,6 +100,7 @@ namespace visitors
 
     private:
         map_QStringQString m_strings;
+		const QString m_langid;
     };
 }
 
@@ -118,7 +127,7 @@ struct base_node : std::enable_shared_from_this<base_node>
     virtual ENodeType kind() const = 0;
     
     virtual void visit(const visitors::document_dump &visitor) const = 0;
-    virtual void visit(visitors::string_extractor_replacer &visitor) = 0;
+	virtual void visit(visitors::string_extractor_replacer &/*visitor*/) {}
     virtual void visit(visitors::back_string_replacer &visitor) = 0;
 
     base_node_ptr     add_child(base_node_ptr ptr)
@@ -182,11 +191,31 @@ struct element_node : base_node
     const QString & name() const { return m_name; }
     const QXmlStreamAttributes & attributes() const { return m_attributes; }
     
-private:
+protected:
     QString m_name;
     QXmlStreamAttributes m_attributes;
     QString m_text;
     EElementNodeType m_element_node_type;
+};
+
+//...............................................................................................................
+
+struct TS_node : element_node
+{
+	TS_node(const QString &name, const QXmlStreamAttributes &attrs)
+		: element_node(element_node::ent_element, name, attrs)
+	{}
+
+	virtual void visit(visitors::back_string_replacer &visitor) { visitor.visit(this); }
+
+	void replace_attribute_value(const QString &att_name, const QString &value)
+	{
+		QXmlStreamAttributes::iterator it = std::find_if(m_attributes.begin(), m_attributes.end(), [&att_name](const QXmlStreamAttribute &att){ return att_name == att.name(); });
+
+		if(it != m_attributes.end()) {
+			*it = QXmlStreamAttribute(it->namespaceUri().toString(), it->name().toString(), value);			
+		}
+	}
 };
 
 

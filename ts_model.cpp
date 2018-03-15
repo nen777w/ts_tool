@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <algorithm>
 
+
 namespace visitors
 {
     void document_dump::visit(const document_node *node) const
@@ -123,7 +124,7 @@ namespace visitors
         std::for_each(node->m_childs.begin(), node->m_childs.end(), [this](const base_node::base_node_ptr node){ node->visit(*this); } );
     }
 
-    void back_string_replacer::visit(const DTD_node *node) { }
+    void back_string_replacer::visit(const DTD_node * /*node*/) { }
 
     void back_string_replacer::visit(element_node *node)
     {
@@ -168,7 +169,8 @@ namespace visitors
 
             if(m_strings.end() == it)
             {
-                std::cerr << "Unprocessed tags <source>: " << source->text().toStdString() << " <translation>: " << translation->text().toStdString() << std::endl;
+				std::cerr << "Unprocessed tags <source>: " << source->text().toUtf8().constData() 
+						<< " <translation>: " << translation->text().toUtf8().constData() << std::endl;
             }
             else
             {
@@ -187,4 +189,16 @@ namespace visitors
 
         std::for_each(node->m_childs.begin(), node->m_childs.end(), [this](const base_node::base_node_ptr node){ node->visit(*this); } );
     }
+
+	void back_string_replacer::visit(TS_node *node)
+	{
+		if(!m_langid.isEmpty()) {
+			node->replace_attribute_value("language", m_langid);
+		}
+
+		std::for_each(node->m_childs.begin(), node->m_childs.end(), [this](const base_node::base_node_ptr node)
+		{ 
+			node->visit(*this); 
+		});
+	}
 }
