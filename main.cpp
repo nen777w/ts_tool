@@ -16,9 +16,9 @@
 #include <QFileInfo>
 #include <QDir>
 
-#define VERSION "2.5"
+#define VERSION "2.6"
 
-void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinished, bool with_vanished);
+void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinished, bool with_vanished, bool unfinished_only);
 void toTS(const QString &inputDir, const QString &outputFile, const QString &langid);
 
 //SHOULD BE IN SAME ORDER AS in args[]
@@ -31,6 +31,7 @@ enum EArgID {
     , arg_langid
     , arg_with_unfinished
     , arg_with_vanished
+    , arg_unfinished_only
 };
 
 struct argument_info
@@ -50,11 +51,12 @@ static const argument_info args[] = {
     ,   {arg_langid, "--langid", "Language id. For example: en_US, de_DE, ja. According to QtLibguist specification. If not set leave default [Work only in TS mode]", false}
     ,   {arg_with_unfinished, "--with-unfinished", "Include unfinished translations. By default: ignore. [Work only in TXT mode]", true}
     ,   {arg_with_vanished, "--with-vanished", "Include obsolete translations. By default: ignore. [Work only in TXT mode]", true}
+    ,   {arg_unfinished_only, "--unfinished-only", "Only unfinished records. By default: ignore. [Work only in TXT mode]", true}
 };
 
 void show_help(int exit_code)
 {
-    std::cout << "ts_tool v" VERSION " CODIJY 2015" << std::endl;
+    std::cout << "ts_tool v" VERSION " CODIJY 2018" << std::endl;
     std::cout << "Arguments:" << std::endl;
 
     std::for_each(args, args+sizeof(args)/sizeof(argument_info), [](const argument_info &nfo)
@@ -90,7 +92,7 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationVersion(VERSION);
 
     QString src, dst, mode, langid;
-    bool with_unfinished = false, with_vanished = false;
+    bool with_unfinished = false, with_vanished = false, unfinished_only = false;
 
     if(1 == argc) {
         show_help(0);
@@ -109,6 +111,7 @@ int main(int argc, char *argv[])
         case arg_langid: value = &langid; break;
         case arg_with_unfinished: with_unfinished = true; break;
         case arg_with_vanished: with_vanished = true; break;
+        case arg_unfinished_only: unfinished_only = true; break;
         }
 
         if(value) {
@@ -126,7 +129,7 @@ int main(int argc, char *argv[])
 
     if("TXT" == mode)
     {
-        toTXT(src, dst, with_unfinished, with_vanished);
+        toTXT(src, dst, with_unfinished, with_vanished, unfinished_only);
     }
     else if("TS" == mode)
     {
@@ -251,7 +254,7 @@ bool parse_txt_file(const QString &inputFile, visitors::map_QStringQString &stri
     return true;
 }
 
-void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinished, bool with_vanished)
+void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinished, bool with_vanished, bool unfinished_only)
 {
     using namespace visitors;
 
@@ -287,7 +290,7 @@ void toTXT(const QString &inputFile, const QString &outputDir, bool with_unfinis
 
     //replace strings
     map_hashQString strings;
-    string_extractor_replacer ser(strings, with_unfinished, with_vanished);
+    string_extractor_replacer ser(strings, with_unfinished, with_vanished, unfinished_only);
     root->visit(ser);
     
     //write text file

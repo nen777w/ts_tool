@@ -79,10 +79,16 @@ namespace visitors
         {
             bool bSkipProcessing = false;
 
-            if(!m_with_unfinished || !m_with_vanished) 
+            if(!m_with_unfinished || !m_with_vanished || !m_unfinished_only)
             {
                 QString attr_type = translation->attributes().value("type").toString();
-                bSkipProcessing = ("unfinished" == attr_type && !m_with_unfinished) || (("vanished" == attr_type || "obsolete" == attr_type) && !m_with_vanished);
+                if(m_unfinished_only) {
+                    bSkipProcessing = "unfinished" != attr_type;
+                }
+                else {
+                    bSkipProcessing =  ("unfinished" == attr_type && !m_with_unfinished)
+                                    || (("vanished" == attr_type || "obsolete" == attr_type) && !m_with_vanished);
+                }
             }
 
             if(!bSkipProcessing)

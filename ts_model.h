@@ -52,10 +52,10 @@ namespace visitors
 
     struct string_extractor_replacer
     {
-        string_extractor_replacer(map_hashQString &vqs, bool with_unfinished, bool with_vanished) 
+        string_extractor_replacer(map_hashQString &vqs, bool with_unfinished, bool with_vanished, bool unfinished_only)
             : m_vqs(vqs), source(nullptr), translation(nullptr)
             , m_state(st_WaitForMessage)
-            , m_with_unfinished(with_unfinished), m_with_vanished(with_vanished)
+            , m_with_unfinished(with_unfinished), m_with_vanished(with_vanished), m_unfinished_only(unfinished_only)
         {}
 
         void visit(const document_node *node);
@@ -71,7 +71,7 @@ namespace visitors
 
     private:
          map_hashQString &m_vqs;
-         bool m_with_unfinished, m_with_vanished;
+         bool m_with_unfinished, m_with_vanished, m_unfinished_only;
     };
 
     //.........................................................................................
